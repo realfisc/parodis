@@ -109,9 +109,12 @@ classdef SymbolicController < Controller
                     optimizerSymbols{end+1} = obj.paramSyms.(name){s};
                 end
             end
+            %FOR UNIT COMMITMENT
+            optimizerSymbols{end+1} = model.historyOnOff;
             
+            %FOR UNIT COMMITMENT
             % define what optimizer should output
-            output = {model.u};
+            output = {model.u,model.onoff};
             
             % optimizer has to deliver all slack variables, since value()
             % does not work with optimizer
@@ -221,6 +224,8 @@ classdef SymbolicController < Controller
                 else
                     % skip solver call, retrieve variables from cell
                     [variables, code, ~, ~, ~, diagnostics] = solver([]);
+                    %FOR UNIT COMMITMENT
+                    obj.oldOnOff = [obj.oldOnOff(2:end) variables{2}(1)];
                 end
                 
                 if iscell(variables)

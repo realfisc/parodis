@@ -61,6 +61,9 @@ classdef Controller < handle
         type
         
         config = struct;
+        
+        % default weights assumed for cost functions
+        oldOnOff = [];
     end
     
     properties (Access = protected)
@@ -267,6 +270,13 @@ classdef Controller < handle
                     valuesVector = [valuesVector; agent.status.paramValues.(name){s}(:)];
                 end
             end
+            if isempty(obj.oldOnOff)
+                obj.oldOnOff = repmat(0,1,10);
+            end
+            values{end+1} = obj.oldOnOff;
+             
+%             
+%             valuesVector = [valuesVector; oldOnOff];
         end
         
         function [symbols] = collectSymbols(obj, agent)
