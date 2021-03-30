@@ -21,6 +21,9 @@ classdef Controller < handle
         % cell array of delta constraint descriptions
         deltaConstraintsTemp = {};
         
+        % cell array of minimum up-time constraint descriptions
+        minUpDownConstraintsTemp = {};
+        
         % callback to set temporary constraints right before getInput call
         callbackTempConstraints
         
@@ -63,7 +66,10 @@ classdef Controller < handle
         config = struct;
         
         % default weights assumed for cost functions
+        
+        %FOR UNIT COMMITMENT
         oldOnOff = [];
+        history = [];
     end
     
     properties (Access = protected)
@@ -121,6 +127,25 @@ classdef Controller < handle
             
             obj.deltaConstraintsTemp{end+1} = {string(variable), index, lb, ub, Ts};
         end
+
+        function addMinUpDownConstraint(obj, variable, index, minUp, minDown, lb, ub, history)
+            if minUp == 0 && minDown == 0
+                warning("PARODIS Controller:addMinUpConstraint minUp and minDown Time are both zero");
+                obj.addBoxConstraint(variable, index, lb, ub);
+                return
+            end
+            if nargin < 8
+                nHistory=max(minUp,minDown);
+                history = repmat(0,1,nHistory);
+            end
+            obj.history=history
+            if variable ~= "u"
+                warning("PARODIS Controller:addMinUpConstraint variable not supported (u only)");
+                return
+            end
+            obj.minUpDownConstraintsTemp{end+1} = {string(variable), index, minUp, minDown, lb, ub, history};
+        end
+        
         
         function addConstraint(obj, arg)
             % if constraint is given implicitly as function handle, store until compilation
@@ -257,6 +282,7 @@ classdef Controller < handle
             paramNames = fieldnames(obj.paramSyms);
             for idx = 1:length(paramNames)
                 name = paramNames{idx};
+                
                 scenarioDependent = obj.paramConfig.(name){3};
                 for s=1:obj.numScenarios
                     % do not repeat scenario dependent variables
@@ -270,10 +296,14 @@ classdef Controller < handle
                     valuesVector = [valuesVector; agent.status.paramValues.(name){s}(:)];
                 end
             end
-            if isempty(obj.oldOnOff)
-                obj.oldOnOff = repmat(0,1,10);
+            %FOR UNIT COMMITMENT
+            if size(obj.minUpDownConstraintsTemp) > 0
+                    if isempty(obj.oldOnOff)
+                        obj.oldOnOff = obj.history;
+                    end
+                    values{end+1} = obj.oldOnOff;
             end
-            values{end+1} = obj.oldOnOff;
+            
              
 %             
 %             valuesVector = [valuesVector; oldOnOff];
