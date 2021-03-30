@@ -4,6 +4,8 @@ classdef SymbolicController < Controller
         % YALMIP optimizer object
         optimizer
         
+        historyOnOff
+        
     end
     
     methods
@@ -38,6 +40,7 @@ classdef SymbolicController < Controller
             % build box and delta constraints from list
             obj.buildBoxConstraints(model);
             obj.buildDeltaConstraints(model, agent.config.T_s);
+            obj.buildminUpDownConstraints(model);
             
             compile@Controller(obj, model, agent, yalmipOptions);
             
@@ -105,16 +108,23 @@ classdef SymbolicController < Controller
                     if s > 1 && ~scenarioDependent
                         break;
                     end
-                    
                     optimizerSymbols{end+1} = obj.paramSyms.(name){s};
                 end
             end
             %FOR UNIT COMMITMENT
-            optimizerSymbols{end+1} = model.historyOnOff;
+            if size(obj.minUpDownConstraintsTemp) > 0
+                for i=1:numel(obj.minUpDownConstraintsTemp)
+                    optimizerSymbols{end+1} = obj.historyOnOff{i};
+                end
+            end
             
             %FOR UNIT COMMITMENT
             % define what optimizer should output
-            output = {model.u,model.onoff};
+            if size(obj.minUpDownConstraintsTemp) > 0
+                output = {model.u,model.onoff};
+            else
+                output = {model.u};
+            end
             
             % optimizer has to deliver all slack variables, since value()
             % does not work with optimizer
@@ -490,6 +500,29 @@ classdef SymbolicController < Controller
                     obj.addConstraint( constraint:sprintf('%s s = %i', tag, s) );
                 end
             end
+        end
+        function buildminUpDownConstraints(obj, model)
+            
+            for i=1:numel(obj.minUpDownConstraintsTemp)
+                
+                [variable, index, minUp, minDown, lb, ub, history] = obj.minUpDownConstraintsTemp{i}{:};
+                tag = char( sprintf("Box Contraint min Up Down Time for u(2)") );
+                obj.addConstraint((model.onoff.*lb <= model.u(index,:) <= model.onoff.*ub):tag);
+                n=max(minUp,minDown);
+                obj.historyOnOff{i} = sdpvar(1,n,'full');
+                x=[obj.historyOnOff{i} model.onoff];
+                horizon = size(x,2);
+                for k = 2:horizon 
+                    indicator = x(k)-x(k-1);
+                    range = k:min(horizon,k+minUp-1);
+                    affected = x(range);
+                    tag = char( sprintf("unit commitment minUp step k(%i) ", k-n) );
+                    con=(affected >= indicator):tag;
+                    obj.addConstraint(con);
+
+                end
+            end
+            
         end
     end
 end
