@@ -527,19 +527,31 @@ classdef SymbolicController < Controller
                 n=max(minUp,minDown);
                 obj.historyOnOff{i,1} = sdpvar(1,n,'full');
                 obj.indexOnOff=[obj.indexOnOff+index];
-                x=[obj.historyOnOff{i} model.onoff(index,:)];
-                horizon = size(x,2);
-                for k = 2:horizon 
-                    indicator = x(k)-x(k-1);
-                    range = k:min(horizon,k+minUp-1);
-                    affected = x(range);
-                    tag = char( sprintf("unit commitment minUp step k(%i) ", k-n) );
-                    con=(affected >= indicator):tag;
-                    obj.addConstraint(con);
-
+                if minUp >0
+                    x=[obj.historyOnOff{i} model.onoff(index,:)];
+                    horizon = size(x,2);
+                    for k = 2:horizon 
+                        indicator = x(k)-x(k-1);
+                        range = k:min(horizon,k+minUp-1);
+                        affected = x(range);
+                        tag = char( sprintf("unit commitment minUp step k(%i) ", k-n) );
+                        con=(affected >= indicator):tag;
+                        obj.addConstraint(con);
+                    end
+                end
+                if minDown >0
+                    x=1-[obj.historyOnOff{i} model.onoff(index,:)];
+                    horizon = size(x,2);
+                    for k = 2:horizon 
+                        indicator = x(k)-x(k-1);
+                        range = k:min(horizon,k+minDown-1);
+                        affected = x(range);
+                        tag = char( sprintf("unit commitment minDown step k(%i) ", k-n) );
+                        con=(affected >= indicator):tag;
+                        obj.addConstraint(con);
+                    end
                 end
             end
-            
         end
     end
 end
