@@ -69,7 +69,7 @@ classdef Controller < handle
         
         %FOR UNIT COMMITMENT
         oldOnOff = [];
-        history = [];
+        prevOnOff = [];
     end
     
     properties (Access = protected)
@@ -138,7 +138,7 @@ classdef Controller < handle
                 nHistory=max(minUp,minDown);
                 history = repmat(0,1,nHistory);
             end
-            obj.history=history
+            obj.prevOnOff=[obj.prevOnOff; history];
             if variable ~= "u"
                 warning("PARODIS Controller:addMinUpConstraint variable not supported (u only)");
                 return
@@ -299,7 +299,7 @@ classdef Controller < handle
             %FOR UNIT COMMITMENT
             if size(obj.minUpDownConstraintsTemp) > 0
                     if isempty(obj.oldOnOff)
-                        obj.oldOnOff = obj.history;
+                        obj.oldOnOff = obj.prevOnOff;
                     end
                     values{end+1} = obj.oldOnOff;
             end

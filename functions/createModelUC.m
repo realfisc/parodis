@@ -21,7 +21,7 @@ function model = createModelUC(model_fun, T_s, numScenarios, implicitPrediction,
     % preset sdpvars for all expressions
     model.x0 = sdpvar(n_x, 1);
     model.u = sdpvar(n_u, length(T_s));
-    model.onoff=binvar(1,length(T_s),'full');
+    model.onoff=binvar(n_u,length(T_s),'full');
     model.n_x = n_x;
     model.n_u = n_u;
     model.n_d = n_d;

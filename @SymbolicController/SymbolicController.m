@@ -6,6 +6,8 @@ classdef SymbolicController < Controller
         
         historyOnOff
         
+        indexOnOff
+        
     end
     
     methods
@@ -40,7 +42,7 @@ classdef SymbolicController < Controller
             % build box and delta constraints from list
             obj.buildBoxConstraints(model);
             obj.buildDeltaConstraints(model, agent.config.T_s);
-            obj.buildminUpDownConstraints(model);
+            obj.buildminUpDownConstraints(model, agent);
             
             compile@Controller(obj, model, agent, yalmipOptions);
             
@@ -113,15 +115,27 @@ classdef SymbolicController < Controller
             end
             %FOR UNIT COMMITMENT
             if size(obj.minUpDownConstraintsTemp) > 0
+                tempHistory=[];
                 for i=1:numel(obj.minUpDownConstraintsTemp)
-                    optimizerSymbols{end+1} = obj.historyOnOff{i};
-                end
+                    tempHistory=[tempHistory; obj.historyOnOff{i,1}];
+                 end
+                    %display(obj.historyOnOff{1:2,1})
+                    optimizerSymbols{end+1} = tempHistory;
+               
             end
             
             %FOR UNIT COMMITMENT
             % define what optimizer should output
+            
             if size(obj.minUpDownConstraintsTemp) > 0
-                output = {model.u,model.onoff};
+                %outputOnOff=cell(size(obj.minUpDownConstraintsTemp));
+                outputOnOff=[];
+                for i=1:numel(obj.minUpDownConstraintsTemp)
+                    [~, index, ~, ~, ~, ~, ~] = obj.minUpDownConstraintsTemp{i}{:};
+                    outputOnOff=[outputOnOff; model.onoff(index,:)];
+                end
+                %output = {model.u,model.onoff}
+                output = {model.u,outputOnOff};
             else
                 output = {model.u};
             end
@@ -235,7 +249,10 @@ classdef SymbolicController < Controller
                     % skip solver call, retrieve variables from cell
                     [variables, code, ~, ~, ~, diagnostics] = solver([]);
                     %FOR UNIT COMMITMENT
-                    obj.oldOnOff = [obj.oldOnOff(2:end) variables{2}(1)];
+                    
+                    if size(obj.minUpDownConstraintsTemp) > 0
+                        obj.oldOnOff = [obj.oldOnOff(:,2:end) [variables{2}(:,1)]];
+                    end
                 end
                 
                 if iscell(variables)
@@ -501,16 +518,16 @@ classdef SymbolicController < Controller
                 end
             end
         end
-        function buildminUpDownConstraints(obj, model)
+        function buildminUpDownConstraints(obj, model, agent)
             
             for i=1:numel(obj.minUpDownConstraintsTemp)
-                
                 [variable, index, minUp, minDown, lb, ub, history] = obj.minUpDownConstraintsTemp{i}{:};
                 tag = char( sprintf("Box Contraint min Up Down Time for u(2)") );
-                obj.addConstraint((model.onoff.*lb <= model.u(index,:) <= model.onoff.*ub):tag);
+                obj.addConstraint((model.onoff(index,:).*lb <= model.u(index,:) <= model.onoff(index,:).*ub):tag);
                 n=max(minUp,minDown);
-                obj.historyOnOff{i} = sdpvar(1,n,'full');
-                x=[obj.historyOnOff{i} model.onoff];
+                obj.historyOnOff{i,1} = sdpvar(1,n,'full');
+                obj.indexOnOff=[obj.indexOnOff+index];
+                x=[obj.historyOnOff{i} model.onoff(index,:)];
                 horizon = size(x,2);
                 for k = 2:horizon 
                     indicator = x(k)-x(k-1);
