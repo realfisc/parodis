@@ -302,11 +302,12 @@ classdef Controller < handle
                         obj.oldOnOff = obj.prevOnOff;
                     end
                     values{end+1} = obj.oldOnOff;
+                    valuesVector = [valuesVector; obj.oldOnOff(:)];
             end
             
-             
+            %FOR EFFICIENCY 
+            %values{end+1} = agent.model.u(5,:);
 %             
-%             valuesVector = [valuesVector; oldOnOff];
         end
         
         function [symbols] = collectSymbols(obj, agent)
@@ -326,9 +327,19 @@ classdef Controller < handle
                     if s > 1 && ~scenarioDependent
                         break;
                     end
-
+                    
                     symbols = [symbols; obj.paramSyms.(name){s}(:)];
                 end
+            end
+            
+            %FOR UNIT COMMITMENT
+            if size(obj.minUpDownConstraintsTemp) > 0
+                
+                for i=1:numel(obj.minUpDownConstraintsTemp)
+                    test=cellfun(@transpose,obj.historyOnOff(i),'UniformOutput',false);
+                    symbols = [symbols; test{i}];
+                end
+                    
             end
         end
     end

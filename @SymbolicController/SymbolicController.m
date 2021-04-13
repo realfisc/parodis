@@ -124,9 +124,9 @@ classdef SymbolicController < Controller
                
             end
             
-            %FOR UNIT COMMITMENT
+
             % define what optimizer should output
-            
+            %FOR UNIT COMMITMENT
             if size(obj.minUpDownConstraintsTemp) > 0
                 %outputOnOff=cell(size(obj.minUpDownConstraintsTemp));
                 outputOnOff=[];
@@ -134,7 +134,6 @@ classdef SymbolicController < Controller
                     [~, index, ~, ~, ~, ~, ~] = obj.minUpDownConstraintsTemp{i}{:};
                     outputOnOff=[outputOnOff; model.onoff(index,:)];
                 end
-                %output = {model.u,model.onoff}
                 output = {model.u,outputOnOff};
             else
                 output = {model.u};
@@ -148,6 +147,8 @@ classdef SymbolicController < Controller
             end
             
             obj.optimizer = optimizer(obj.constraints, obj.costExpression, yalmipOptions, optimizerSymbols, output);
+            
+            
             
         end
         
@@ -219,6 +220,10 @@ classdef SymbolicController < Controller
                 agent.log("solving using optimize()");
                 result = optimize(optimizeConstraints, optimizeCost, obj.yalmipOptions);
                 uPred = value(agent.model.u);
+                %FOR UNIT COMMITMENT
+                if size(obj.minUpDownConstraintsTemp) > 0
+                        obj.oldOnOff = [obj.oldOnOff(:,2:end) [value(agent.model.onoff(2,1))]];
+                end
                 
                 slackValues = struct;
                 slackVariableNames = fieldnames(obj.slackVariables);
