@@ -255,7 +255,7 @@ classdef Controller < handle
                     if model.parameterVariant
                         dynConstraint = (model.x{s}(:, k+1) == odes{k}(model.x{s}(:, k), model.u(:, k), d{s}(:, k), k, params)):tag;
                     else
-                        dynConstraint = (model.x{s}(:, k+1) == odes{k}(model.x{s}(:, k), model.u(:, k), d{s}(:, k))):tag;
+                        dynConstraint = (model.x{s}(:, k+1) == odes{k}(model.x{s}(:, k), model.u(:, k), d{s}(:, k),k)):tag; 
                     end
                     
                     constraints = [constraints; dynConstraint];
@@ -303,11 +303,7 @@ classdef Controller < handle
                     end
                     values{end+1} = obj.oldOnOff;
                     valuesVector = [valuesVector; obj.oldOnOff(:)];
-            end
-            
-            %FOR EFFICIENCY 
-            %values{end+1} = agent.model.u(5,:);
-%             
+            end    
         end
         
         function [symbols] = collectSymbols(obj, agent)
