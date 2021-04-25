@@ -147,6 +147,7 @@ classdef SymbolicController < Controller
             end
             
             obj.optimizer = optimizer(obj.constraints, obj.costExpression, yalmipOptions, optimizerSymbols, output);
+            %obj.optimizer = optimizer(obj.constraints, [], yalmipOptions, optimizerSymbols, output);
             
             
             
@@ -524,12 +525,23 @@ classdef SymbolicController < Controller
             end
         end
         function buildminUpDownConstraints(obj, model, agent)
-            
+            up=[];
+            down=[];
+            for i=1:numel(obj.minUpDownConstraintsTemp)
+                [~, ~, minUp, minDown, ~, ~, ~] = obj.minUpDownConstraintsTemp{i}{:};
+                up=[up,minUp];
+                down=[down,minDown];
+            end
             for i=1:numel(obj.minUpDownConstraintsTemp)
                 [variable, index, minUp, minDown, lb, ub, history] = obj.minUpDownConstraintsTemp{i}{:};
                 tag = char( sprintf("Box Contraint min Up Down Time for u(2)") );
                 obj.addConstraint((model.onoff(index,:).*lb <= model.u(index,:) <= model.onoff(index,:).*ub):tag);
-                n=max(minUp,minDown);
+                n=max([up,down]);
+                if size(history,2)<n
+                    diff=n-size(history,2);
+                    history=[zeros([1 diff]), history];
+                end
+                obj.prevOnOff=[obj.prevOnOff; history];
                 obj.historyOnOff{i,1} = sdpvar(1,n,'full');
                 obj.indexOnOff=[obj.indexOnOff+index];
                 if minUp >0
@@ -539,7 +551,7 @@ classdef SymbolicController < Controller
                         indicator = x(k)-x(k-1);
                         range = k:min(horizon,k+minUp-1);
                         affected = x(range);
-                        tag = char( sprintf("unit commitment minUp step k(%i) ", k-n) );
+                        tag = char( sprintf("Minimum uptime u_%i(%i) ", index,k-n) );
                         con=(affected >= indicator):tag;
                         obj.addConstraint(con);
                     end
@@ -551,7 +563,7 @@ classdef SymbolicController < Controller
                         indicator = x(k)-x(k-1);
                         range = k:min(horizon,k+minDown-1);
                         affected = x(range);
-                        tag = char( sprintf("unit commitment minDown step k(%i) ", k-n) );
+                        tag = char( sprintf("Minimum downtime u_%i(%i) ", index,k-n) );
                         con=(affected >= indicator):tag;
                         obj.addConstraint(con);
                     end
