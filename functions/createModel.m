@@ -28,7 +28,7 @@ function model = createModel(model_fun, T_s, numScenarios, implicitPrediction, c
     model.odes = {};
     model.ode0 = ode_k;
     model.implicitPrediction = implicitPrediction;
-    model.parameterVariant = nargin(ode_k) > 3;
+    model.parameterVariant = nargin(ode_k) > 4;
     
     % test is model function returns x_flat
     % must take vector of all T_s as input
