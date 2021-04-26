@@ -28,9 +28,10 @@ function model = createModelHL_sep(model_fun, T_s, numScenarios, implicitPredict
     model.eta_fc=eta_fc;
     model.x0 = sdpvar(n_x, 1);
     model.u = sdpvar(n_u, length(T_s));
-    model.onoff=binvar(n_u,length(T_s),'full');
-    model.case_elz=binvar(2,length(T_s),'full');
-    model.case_fc=binvar(2,length(T_s),'full');
+    model.onoff=binvar(n_u,length(T_s));
+    model.case_elz=binvar(2,length(T_s));
+    model.case_fc=binvar(2,length(T_s));
+    model.case=binvar(2,length(T_s));
     model.n_x = n_x;
     model.n_u = n_u;
     model.n_d = n_d;
@@ -98,7 +99,7 @@ function model = createModelHL_sep(model_fun, T_s, numScenarios, implicitPredict
                 if model.parameterVariant
                     model.x{s}(:, k+1) = ode_k(model.x{s}(:, k), model.u(:, k), model.d{s}(:, k), k, extractScenario(controller.paramSyms, s));
                 else
-                    model.x{s}(:, k+1) = ode_k(model.x{s}(:, k), model.u(:, k), model.d{s}(:, k));
+                    model.x{s}(:, k+1) = ode_k(model.x{s}(:, k), model.u(:, k), model.d{s}(:, k),k);
                 end
             end
         end
