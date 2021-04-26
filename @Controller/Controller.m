@@ -138,7 +138,7 @@ classdef Controller < handle
                 nHistory=max(minUp,minDown);
                 history = repmat(0,1,nHistory);
             end
-            obj.prevOnOff=[obj.prevOnOff; history];
+           
             if variable ~= "u"
                 warning("PARODIS Controller:addMinUpConstraint variable not supported (u only)");
                 return
