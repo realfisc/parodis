@@ -1,5 +1,8 @@
 classdef ExplicitController < Controller
     properties
+        historyOnOff
+        
+        indexOnOff
     end
     
     methods
@@ -141,6 +144,8 @@ classdef ExplicitController < Controller
             % build constraints with actual values instead of parameters
             boxConstraints = obj.buildBoxConstraints(paramValues, model);
             deltaConstraints = obj.buildDeltaConstraints(paramValues, model, agent.config.T_s);
+            minUpDownConstraints=obj.buildminUpDownConstraints(model, agent);
+           
             slackConstraints = [];
 
             
@@ -151,7 +156,7 @@ classdef ExplicitController < Controller
                 slackConstraints = [slackConstraints; extraConstraints];
             end
 
-            optimizeConstraints = [constraints; boxConstraints; deltaConstraints; slackConstraints];
+            optimizeConstraints = [constraints; boxConstraints; deltaConstraints; slackConstraints;minUpDownConstraints];
             
             costExpressions = {};
 
@@ -424,6 +429,57 @@ classdef ExplicitController < Controller
                     % yalmip constraint expression for x(n+1|k) - x(n|k)
                     constraint = lb_ <= symbol(index, 2:end) - symbol(index, 1:end-1) <= ub_;
                     constraints = [constraints; constraint:sprintf('%s s = %i', tag, s) ];
+                end
+            end
+        end
+        function constraints= buildminUpDownConstraints(obj, model, agent)
+            up=[];
+            down=[];
+            constraints = [];
+            for i=1:numel(obj.minUpDownConstraintsTemp)
+                [~, ~, minUp, minDown, ~, ~, ~] = obj.minUpDownConstraintsTemp{i}{:};
+                up=[up,minUp];
+                down=[down,minDown];
+            end
+            for i=1:numel(obj.minUpDownConstraintsTemp)
+                [variable, index, minUp, minDown, lb, ub, history] = obj.minUpDownConstraintsTemp{i}{:};
+                tag = char( sprintf("Box Contraint min Up Down Time for u(2)") );
+                %obj.addConstraint((model.onoff(index,:).*lb <= model.u(index,:) <= model.onoff(index,:).*ub):tag);
+                obj.addConstraint(@(model, parameters, slacks, s)(model.onoff(index,:).*lb <= model.u(index,:) <= model.onoff(index,:).*ub):tag);
+                n=max([up,down]);
+                if size(history,2)<n
+                    diff=n-size(history,2);
+                    history=[zeros([1 diff]), history];
+                end
+                obj.prevOnOff=[obj.prevOnOff; history];
+                obj.historyOnOff{i,1} = sdpvar(1,n,'full');
+                obj.indexOnOff=[obj.indexOnOff+index];
+                if minUp >0
+                    x=[obj.historyOnOff{i} model.onoff(index,:)];
+                    horizon = size(x,2);
+                    for k = 2:horizon 
+                        indicator = x(k)-x(k-1);
+                        range = k:min(horizon,k+minUp-1);
+                        affected = x(range);
+                        tag = char( sprintf("Minimum uptime u_%i(%i) ", index,k-n) );
+                        con=(affected >= indicator):tag;
+                        obj.addConstraint(@(model, parameters, slacks, s)(con));
+                    end
+                end
+                if minDown >0
+                    x=1-[obj.historyOnOff{i} model.onoff(index,:)];
+                    horizon = size(x,2);
+                    for k = 2:horizon 
+                        indicator = x(k)-x(k-1);
+                        range = k:min(horizon,k+minDown-1);
+                        affected = x(range);
+                        tag = char( sprintf("Minimum downtime u_%i(%i) ", index,k-n) );
+                        con=(affected >= indicator):tag;
+                        
+                        constraints = [constraints,con];
+%                         obj.addConstraint(@(model, parameters, slacks, s)(con));
+                        %obj.addConstraint(con);
+                    end
                 end
             end
         end
