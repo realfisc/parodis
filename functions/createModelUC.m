@@ -15,13 +15,15 @@ function model = createModelUC(model_fun, T_s, numScenarios, implicitPrediction,
         controller = [];
     end
     
+    numonoff=size(controller.minUpDownConstraintsTemp,2);
+    
     % get parameters for presetting sdpvars
     [ode_k, n_x, n_u, n_d] = model_fun(T_s(1));
     
     % preset sdpvars for all expressions
     model.x0 = sdpvar(n_x, 1);
     model.u = sdpvar(n_u, length(T_s));
-    model.onoff=binvar(n_u,length(T_s),'full');
+    model.onoff=binvar(numonoff,length(T_s),'full');
     model.n_x = n_x;
     model.n_u = n_u;
     model.n_d = n_d;

@@ -132,7 +132,7 @@ classdef SymbolicController < Controller
                 outputOnOff=[];
                 for i=1:numel(obj.minUpDownConstraintsTemp)
                     [~, index, ~, ~, ~, ~, ~] = obj.minUpDownConstraintsTemp{i}{:};
-                    outputOnOff=[outputOnOff; model.onoff(index,:)];
+                    outputOnOff=[outputOnOff; model.onoff(i,:)];
                 end
                 output = {model.u,outputOnOff};
             else
@@ -222,8 +222,8 @@ classdef SymbolicController < Controller
                 result = optimize(optimizeConstraints, optimizeCost, obj.yalmipOptions);
                 uPred = value(agent.model.u);
                 %FOR UNIT COMMITMENT
-                if size(obj.minUpDownConstraintsTemp) > 0
-                        obj.oldOnOff = [obj.oldOnOff(:,2:end) [value(agent.model.onoff(2,1))]];
+                if size(obj.minUpDownConstraintsTemp,1) > 0
+                        obj.oldOnOff = [obj.oldOnOff(:,2:end) [value(agent.model.onoff(:,1))]];
                 end
                 
                 slackValues = struct;
@@ -256,11 +256,11 @@ classdef SymbolicController < Controller
                     [variables, code, ~, ~, ~, diagnostics] = solver([]);
                     %FOR UNIT COMMITMENT
                     
-                    if size(obj.minUpDownConstraintsTemp) > 0
+                    if size(obj.minUpDownConstraintsTemp,1) > 0
                         obj.oldOnOff = [obj.oldOnOff(:,2:end) [variables{2}(:,1)]];
                     end
+                    
                 end
-                
                 if iscell(variables)
                     uPred = variables{1};
                 else
@@ -271,7 +271,11 @@ classdef SymbolicController < Controller
                 slackVariableNames = fieldnames(obj.slackVariables);
                 for idx = 1:length(slackVariableNames)
                     name = slackVariableNames{idx};
-                    slackValues.(name) = variables{idx+1};
+                    if size(obj.minUpDownConstraintsTemp,1) > 0
+                        slackValues.(name) = variables{idx+2};
+                    else
+                        slackValues.(name) = variables{idx+1};
+                    end
                 end
                 
                 message = yalmiperror(code);
@@ -535,7 +539,7 @@ classdef SymbolicController < Controller
             for i=1:numel(obj.minUpDownConstraintsTemp)
                 [variable, index, minUp, minDown, lb, ub, history] = obj.minUpDownConstraintsTemp{i}{:};
                 tag = char( sprintf("Box Contraint min Up Down Time for u(2)") );
-                obj.addConstraint((model.onoff(index,:).*lb <= model.u(index,:) <= model.onoff(index,:).*ub):tag);
+                obj.addConstraint((model.onoff(i,:).*lb <= model.u(index,:) <= model.onoff(i,:).*ub):tag);
                 n=max([up,down]);
                 if size(history,2)<n
                     diff=n-size(history,2);
@@ -545,7 +549,7 @@ classdef SymbolicController < Controller
                 obj.historyOnOff{i,1} = sdpvar(1,n,'full');
                 obj.indexOnOff=[obj.indexOnOff+index];
                 if minUp >0
-                    x=[obj.historyOnOff{i} model.onoff(index,:)];
+                    x=[obj.historyOnOff{i} model.onoff(i,:)];
                     horizon = size(x,2);
                     for k = 2:horizon 
                         indicator = x(k)-x(k-1);
@@ -557,7 +561,7 @@ classdef SymbolicController < Controller
                     end
                 end
                 if minDown >0
-                    x=1-[obj.historyOnOff{i} model.onoff(index,:)];
+                    x=1-[obj.historyOnOff{i} model.onoff(i,:)];
                     horizon = size(x,2);
                     for k = 2:horizon 
                         indicator = x(k)-x(k-1);
