@@ -20,18 +20,17 @@ function model = createModelHL_sep(model_fun, T_s, numScenarios, implicitPredict
 %     end
     
     % get parameters for presetting sdpvars
-    [ode_k, n_x, n_u, n_d,eta_elz,eta_fc] = model_fun(T_s(1),1);
+    [ode_k, n_x, n_u, n_d,m_elz,m_fc] = model_fun(T_s(1),1);
     %[ode_k_alt, ~, ~, ~] = model_fun_alt(T_s(1));
     
     % preset sdpvars for all expressions
-    model.eta_elz=eta_elz;
-    model.eta_fc=eta_fc;
+    
+    model.m_elz=m_elz;
+    model.m_fc=m_fc;
     model.x0 = sdpvar(n_x, 1);
     model.u = sdpvar(n_u, length(T_s));
     model.onoff=binvar(n_u,length(T_s));
-    model.case_elz=binvar(2,length(T_s));
-    model.case_fc=binvar(2,length(T_s));
-    model.case=binvar(2,length(T_s));
+
     model.n_x = n_x;
     model.n_u = n_u;
     model.n_d = n_d;
