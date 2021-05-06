@@ -483,6 +483,9 @@ classdef SymbolicController < Controller
                 
                 % vector for scaling dx to appropriate time steps
                 scale = T_s/T_s_ref;
+                if strcmp(variable,'u')
+                    scale=scale(1:end-1);
+                end
                 
                 if iscell( model.(variable) )
                     N_S = length( model.(variable) );
