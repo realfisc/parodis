@@ -445,7 +445,7 @@ classdef ExplicitController < Controller
                 [variable, index, minUp, minDown, lb, ub, history] = obj.minUpDownConstraintsTemp{i}{:};
                 tag = char( sprintf("Box Contraint min Up Down Time for u(2)") );
                 %obj.addConstraint((model.onoff(index,:).*lb <= model.u(index,:) <= model.onoff(index,:).*ub):tag);
-                obj.addConstraint(@(model, parameters, slacks, s)(model.onoff(index,:).*lb <= model.u(index,:) <= model.onoff(index,:).*ub):tag);
+                obj.addConstraint(@(model, parameters, slacks, s)(model.onoff(i,:).*lb <= model.u(index,:) <= model.onoff(i,:).*ub):tag);
                 n=max([up,down]);
                 if size(history,2)<n
                     diff=n-size(history,2);
@@ -455,7 +455,7 @@ classdef ExplicitController < Controller
                 obj.historyOnOff{i,1} = sdpvar(1,n,'full');
                 obj.indexOnOff=[obj.indexOnOff+index];
                 if minUp >0
-                    x=[obj.historyOnOff{i} model.onoff(index,:)];
+                    x=[obj.historyOnOff{i} model.onoff(i,:)];
                     horizon = size(x,2);
                     for k = 2:horizon 
                         indicator = x(k)-x(k-1);
@@ -463,11 +463,12 @@ classdef ExplicitController < Controller
                         affected = x(range);
                         tag = char( sprintf("Minimum uptime u_%i(%i) ", index,k-n) );
                         con=(affected >= indicator):tag;
-                        obj.addConstraint(@(model, parameters, slacks, s)(con));
+                        %obj.addConstraint(@(model, parameters, slacks, s)(con));
+                        constraints=[constraints;con];
                     end
                 end
                 if minDown >0
-                    x=1-[obj.historyOnOff{i} model.onoff(index,:)];
+                    x=1-[obj.historyOnOff{i} model.onoff(i,:)];
                     horizon = size(x,2);
                     for k = 2:horizon 
                         indicator = x(k)-x(k-1);
@@ -476,8 +477,9 @@ classdef ExplicitController < Controller
                         tag = char( sprintf("Minimum downtime u_%i(%i) ", index,k-n) );
                         con=(affected >= indicator):tag;
                         
-                        constraints = [constraints,con];
-%                         obj.addConstraint(@(model, parameters, slacks, s)(con));
+                        %constraints = [constraints,con];
+                        %obj.addConstraint(@(model, parameters, slacks, s)(con));
+                        constraints=[constraints;con];
                         %obj.addConstraint(con);
                     end
                 end
