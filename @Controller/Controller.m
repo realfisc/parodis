@@ -255,7 +255,7 @@ classdef Controller < handle
                     if model.parameterVariant
                         dynConstraint = (model.x{s}(:, k+1) == odes{k}(model.x{s}(:, k), model.u(:, k), d{s}(:, k), k, params)):tag;
                     else
-                        dynConstraint = (model.x{s}(:, k+1) == odes{k}(model.x{s}(:, k), model.u(:, k), d{s}(:, k),k)):tag; 
+                        dynConstraint = (model.x{s}(:, k+1) == odes{k}(model.x{s}(:, k), model.u(:, k), d{s}(:, k))):tag; 
                     end
                     
                     constraints = [constraints; dynConstraint];

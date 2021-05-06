@@ -286,7 +286,7 @@ classdef Agent < handle
             if this.model.parameterVariant
                 x1 = this.model.ode0(x0, u0, d0, 1, extractScenario(this.status.paramValues, 1));
             else
-                     x1 = this.model.ode0(x0, u0, d0,1);
+                     x1 = this.model.ode0(x0, u0, d0);
             end
             
             this.history.x(:, end+1) = x1;
@@ -434,7 +434,7 @@ classdef Agent < handle
                         if parameterVariant
                             xPred{s}(:, n+1) =  odes{n}( x_n, uPred(:, n), dPred{s}(:, n), n, params );
                         else
-                            xPred{s}(:, n+1) =  odes{n}( x_n, uPred(:, n), dPred{s}(:, n),n );
+                            xPred{s}(:, n+1) =  odes{n}( x_n, uPred(:, n), dPred{s}(:, n) );
                         end
                     end
                     
