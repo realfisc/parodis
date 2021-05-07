@@ -42,7 +42,7 @@ classdef SymbolicController < Controller
             % build box and delta constraints from list
             obj.buildBoxConstraints(model);
             obj.buildDeltaConstraints(model, agent.config.T_s);
-            obj.buildminUpDownConstraints(model, agent);
+            obj.buildminUpDownConstraints(model, agent.config.T_s);
             
             compile@Controller(obj, model, agent, yalmipOptions);
             
@@ -531,19 +531,23 @@ classdef SymbolicController < Controller
                 end
             end
         end
-        function buildminUpDownConstraints(obj, model, agent)
+        function buildminUpDownConstraints(obj, model, Ts)
             up=[];
             down=[];
             for i=1:numel(obj.minUpDownConstraintsTemp)
                 [~, ~, minUp, minDown, ~, ~, ~] = obj.minUpDownConstraintsTemp{i}{:};
-                up=[up,minUp];
-                down=[down,minDown];
+                scaleUp=ceil(minUp/Ts(1));
+                scaleDown=ceil(minDown/Ts(1));
+                up=[up,scaleUp];
+                down=[down,scaleDown];
             end
             for i=1:numel(obj.minUpDownConstraintsTemp)
                 [variable, index, minUp, minDown, lb, ub, history] = obj.minUpDownConstraintsTemp{i}{:};
-                tag = char( sprintf("Box Contraint min Up Down Time for u(2)") );
+                tag = char( sprintf("Box Contraint min Up Down Time for u(%i)",index) );
                 obj.addConstraint((model.onoff(i,:).*lb <= model.u(index,:) <= model.onoff(i,:).*ub):tag);
                 n=max([up,down]);
+                
+                
                 if size(history,2)<n
                     diff=n-size(history,2);
                     history=[zeros([1 diff]), history];
@@ -551,14 +555,16 @@ classdef SymbolicController < Controller
                 obj.prevOnOff=[obj.prevOnOff; history];
                 obj.historyOnOff{i,1} = sdpvar(1,n,'full');
                 obj.indexOnOff=[obj.indexOnOff+index];
+                Ts=[repmat(Ts(1), 1, size(obj.historyOnOff{i},2)),Ts];
                 if minUp >0
                     x=[obj.historyOnOff{i} model.onoff(i,:)];
                     horizon = size(x,2);
                     for k = 2:horizon 
+                        minUpStep=ceil(minUp/Ts(k));
                         indicator = x(k)-x(k-1);
-                        range = k:min(horizon,k+minUp-1);
+                        range = k:min(horizon,k+minUpStep-1);
                         affected = x(range);
-                        tag = char( sprintf("Minimum uptime u_%i(%i) ", index,k-n) );
+                        tag = char( sprintf("Minimum uptime u_%i(%i)", index,k-n) );
                         con=(affected >= indicator):tag;
                         obj.addConstraint(con);
                     end
@@ -567,8 +573,9 @@ classdef SymbolicController < Controller
                     x=1-[obj.historyOnOff{i} model.onoff(i,:)];
                     horizon = size(x,2);
                     for k = 2:horizon 
+                        minDownStep=ceil(minDown/Ts(k));
                         indicator = x(k)-x(k-1);
-                        range = k:min(horizon,k+minDown-1);
+                        range = k:min(horizon,k+minDownStep-1);
                         affected = x(range);
                         tag = char( sprintf("Minimum downtime u_%i(%i) ", index,k-n) );
                         con=(affected >= indicator):tag;

@@ -128,14 +128,16 @@ classdef Controller < handle
             obj.deltaConstraintsTemp{end+1} = {string(variable), index, lb, ub, Ts};
         end
 
-        function addMinUpDownConstraint(obj, variable, index, minUp, minDown, lb, ub, history)
+        function addMinUpDownConstraint(obj, variable, index, minUp, minDown, lb, ub,Ts, history)
             if minUp == 0 && minDown == 0
                 warning("PARODIS Controller:addMinUpConstraint minUp and minDown Time are both zero");
                 obj.addBoxConstraint(variable, index, lb, ub);
                 return
             end
-            if nargin < 8
-                nHistory=max(minUp,minDown);
+            if nargin < 9
+                minUpStep=ceil(minUp/Ts(1));
+                minDownStep=ceil(minDown/Ts(1));
+                nHistory=max(minUpStep,minDownStep);
                 history = repmat(0,1,nHistory);
             end
            
