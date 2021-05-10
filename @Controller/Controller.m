@@ -304,7 +304,11 @@ classdef Controller < handle
                         obj.oldOnOff = obj.prevOnOff;
                     end
                     values{end+1} = obj.oldOnOff;
-                    valuesVector = [valuesVector; obj.oldOnOff(:)];
+                for i=1:numel(obj.minUpDownConstraintsTemp)                   
+                    valuesVector = [valuesVector; obj.oldOnOff(i,:).'];
+                end
+
+                    
             end    
         end
         
@@ -325,17 +329,15 @@ classdef Controller < handle
                     if s > 1 && ~scenarioDependent
                         break;
                     end
-                    
                     symbols = [symbols; obj.paramSyms.(name){s}(:)];
                 end
             end
             
             %FOR UNIT COMMITMENT
-            if size(obj.minUpDownConstraintsTemp) > 0
-                
+            if size(obj.minUpDownConstraintsTemp) > 0 
                 for i=1:numel(obj.minUpDownConstraintsTemp)
-                    test=cellfun(@transpose,obj.historyOnOff(i),'UniformOutput',false);
-                    symbols = [symbols; test{i}];
+                    hist=cellfun(@transpose,obj.historyOnOff(i),'UniformOutput',false);
+                    symbols = [symbols; hist{1}];
                 end
                     
             end

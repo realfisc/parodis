@@ -222,10 +222,11 @@ classdef SymbolicController < Controller
                 result = optimize(optimizeConstraints, optimizeCost, obj.yalmipOptions);
                 uPred = value(agent.model.u);
                 %FOR UNIT COMMITMENT
+                %disp(value(agent.model.u))
                 if size(obj.minUpDownConstraintsTemp,1) > 0
-                        obj.oldOnOff = [obj.oldOnOff(:,2:end) [value(agent.model.onoff(:,1))]];
+                        obj.oldOnOff = [obj.oldOnOff(:,2:end) value(agent.model.onoff(:,1))];
                 end
-                
+             
                 slackValues = struct;
                 slackVariableNames = fieldnames(obj.slackVariables);
                 for idx = 1:length(slackVariableNames)
