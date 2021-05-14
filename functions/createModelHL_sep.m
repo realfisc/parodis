@@ -79,7 +79,7 @@ function model = createModelHL_sep(model_fun, T_s, numScenarios, implicitPredict
             if hasLinearRepresentation
                 [ode_k, ~, ~, ~, linRep] = model_fun(T_s(k));
             else
-                [ode_k, ~, ~, ~] = model_fun(T_s(k),k);
+                [ode_k, ~, ~, ~] = model_fun(T_s(k));
             end
         end
         model.odes{end+1} = ode_k;
@@ -97,7 +97,7 @@ function model = createModelHL_sep(model_fun, T_s, numScenarios, implicitPredict
                 if model.parameterVariant
                     model.x{s}(:, k+1) = ode_k(model.x{s}(:, k), model.u(:, k), model.d{s}(:, k), k, extractScenario(controller.paramSyms, s));
                 else
-                    model.x{s}(:, k+1) = ode_k(model.x{s}(:, k), model.u(:, k), model.d{s}(:, k),k);
+                    model.x{s}(:, k+1) = ode_k(model.x{s}(:, k), model.u(:, k), model.d{s}(:, k));
                 end
             end
         end
