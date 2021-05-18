@@ -15,17 +15,10 @@ function model = createModelHL_sep(model_fun, T_s, numScenarios, implicitPredict
         controller = [];
     end
     
-%     if nargin < 6
-%         model_fun_alt = [];
-%     end
-    
     % get parameters for presetting sdpvars
     [ode_k, n_x, n_u, n_d] = model_fun(T_s(1));
-    %[ode_k_alt, ~, ~, ~] = model_fun_alt(T_s(1));
     
     % preset sdpvars for all expressions
-    
-
     model.x0 = sdpvar(n_x, 1);
     model.u = sdpvar(n_u, length(T_s));
     model.onoff=binvar(n_u,length(T_s));
