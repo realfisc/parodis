@@ -130,8 +130,9 @@ classdef Controller < handle
 
         function addMinUpDownConstraint(obj, variable, index, minUp, minDown, lb, ub,Ts, history)
             if minUp == 0 && minDown == 0
-                warning("PARODIS Controller:addMinUpConstraint minUp and minDown Time are both zero");
-                obj.addBoxConstraint(variable, index, lb, ub);
+                warning("PARODIS Controller:addMinUpConstraint minUp and minDown Time are both zero, only box contraints will added");
+                %obj.addBoxConstraint(variable, index, lb, ub);
+                obj.boxConstraintsTemp{end+1} = {variable, index, lb, ub};
                 return
             end
             if nargin < 9
