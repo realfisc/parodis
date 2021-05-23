@@ -393,10 +393,7 @@ classdef ExplicitController < Controller
                 end
                 
                 % vector for scaling dx to appropriate time steps
-                scale = T_s/T_s_ref;
-                if strcmp(variable,'u')
-                    scale=scale(1:end-1);
-                end
+                scale = T_s(1:N_horz-1)/T_s_ref; % dx/du consider N_horz-1 many steps, and N_horz is shorter for du
                 
                 if iscell( variableSym )
                     N_S = length( variableSym );
