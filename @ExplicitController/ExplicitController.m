@@ -151,7 +151,7 @@ classdef ExplicitController < Controller
             % build constraints with actual values instead of parameters
             boxConstraints = obj.buildBoxConstraints(paramValues, model);
             deltaConstraints = obj.buildDeltaConstraints(paramValues, model, agent.config.T_s);
-            minUpDownConstraints=obj.buildminUpDownConstraints(model, agent.config.T_s);
+            %minUpDownConstraints=obj.buildminUpDownConstraints(model, agent.config.T_s);
             
             slackConstraints = [];
             
@@ -163,7 +163,7 @@ classdef ExplicitController < Controller
                 slackConstraints = [slackConstraints; extraConstraints];
             end
 
-            optimizeConstraints = [constraints; boxConstraints; deltaConstraints;minUpDownConstraints; slackConstraints];
+            optimizeConstraints = [constraints; boxConstraints; deltaConstraints; slackConstraints];
             
             costExpressions = {};
 
@@ -439,6 +439,8 @@ classdef ExplicitController < Controller
                 end
             end
         end
+    end
+    methods (Access = public)
         function constraints= buildminUpDownConstraints(obj, model, Ts)
             up=[];
             down=[];
@@ -453,14 +455,12 @@ classdef ExplicitController < Controller
             for i=1:numel(obj.minUpDownConstraintsTemp)
                 [variable, index, minUp, minDown, lb, ub, history] = obj.minUpDownConstraintsTemp{i}{:};
                 tag = char( sprintf("Box Contraint min Up Down Time for u(%i)",index) );
-                %obj.addConstraint((model.onoff(i,:).*lb <= model.u(index,:) <= model.onoff(i,:).*ub):tag);
-                boxcon=(model.onoff(i,:).*lb <= model.u(index,:) <= model.onoff(i,:).*ub):tag;
-                %obj.addConstraint(boxcon);
-                %obj.addConstraint(@(model, parameters, slacks, s)(boxcon));
-                constraints = [constraints;boxcon];
+%                 boxcon=(model.onoff(i,:).*lb <= model.u(index,:) <= model.onoff(i,:).*ub):tag;
+%                 constraints = [constraints;boxcon];
+                obj.addConstraint( @(model, parameters, slacks)(model.onoff(i,:).*lb <= model.u(index,:) <= model.onoff(i,:).*ub) );
+                
                 n=max([up,down]);
-                
-                
+                             
                 if size(history,2)<n
                     diff=n-size(history,2);
                     history=[zeros([1 diff]), history];
@@ -478,10 +478,10 @@ classdef ExplicitController < Controller
                         range = k:min(horizon,k+minUpStep-1);
                         affected = x(range);
                         tag = char( sprintf("Minimum uptime u_%i(%i)", index,k-n) );
-                        conup=(affected >= indicator):tag;
-                        %obj.addConstraint(conup);
+%                         conup=(affected >= indicator):tag;
+%                         constraints = [constraints;conup];   
+                        obj.addConstraint( @(model, parameters, slacks)( affected >= indicator) );
                         
-                        constraints = [constraints;conup];   
                     end
                     
                 end
@@ -494,13 +494,11 @@ classdef ExplicitController < Controller
                         range = k:min(horizon,k+minDownStep-1);
                         affected = x(range);
                         tag = char( sprintf("Minimum downtime u_%i(%i) ", index,k-n) );
-                        condown=(affected >= indicator):tag;
-                        %obj.addConstraint(condown);
-                        %obj.addConstraint(@(model, parameters, slacks, s)(condown));
-                        constraints = [constraints;condown];
+%                         condown=(affected >= indicator):tag;
+%                         constraints = [constraints;condown];
+                        obj.addConstraint( @(model, parameters, slacks)( affected >= indicator) );
                     end
                 end
-                %obj.addConstraint(@(model, parameters, slacks, s)(constraints));
             end
         end
     end

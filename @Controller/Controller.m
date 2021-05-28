@@ -213,7 +213,9 @@ classdef Controller < handle
                     obj.constraints = [obj.constraints; extraConstraints];
                 end
             end
-            
+            if isequal(obj.type, 'explicit')
+                obj.buildminUpDownConstraints(model, agent.config.T_s);
+            end
             % create sdpvar for symbolic weights
             obj.weightSyms = sdpvar(1, length( obj.costFunctions) );
             
