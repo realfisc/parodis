@@ -78,7 +78,6 @@ function model = createModelUC(model_fun, T_s, numScenarios, implicitPrediction,
         model.odes{end+1} = ode_k;
         
         if hasLinearRepresentation
-            disp(B)
             flrMatrices(k) = linRep;
         end
         
