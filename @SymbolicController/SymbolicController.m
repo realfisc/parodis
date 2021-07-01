@@ -115,12 +115,13 @@ classdef SymbolicController < Controller
             end
             %FOR UNIT COMMITMENT
             if size(obj.minUpDownConstraintsTemp) > 0
-                tempHistory=[];
+               % tempHistory=[];
                 for i=1:numel(obj.minUpDownConstraintsTemp)
-                    tempHistory=[tempHistory; obj.historyOnOff{i,1}];
+                   % tempHistory=[tempHistory; obj.historyOnOff{i,1}];
+                    optimizerSymbols{end+1} = obj.historyOnOff{i,1};
                  end
                     %display(obj.historyOnOff{1:2,1})
-                    optimizerSymbols{end+1} = tempHistory;
+                    %optimizerSymbols{end+1} = tempHistory;
                
             end
             
@@ -129,12 +130,12 @@ classdef SymbolicController < Controller
             %FOR UNIT COMMITMENT
             if size(obj.minUpDownConstraintsTemp) > 0
                 %outputOnOff=cell(size(obj.minUpDownConstraintsTemp));
-                outputOnOff=[];
-                for i=1:numel(obj.minUpDownConstraintsTemp)
-                    [~, index, ~, ~, ~, ~, ~] = obj.minUpDownConstraintsTemp{i}{:};
-                    outputOnOff=[outputOnOff; model.onoff(i,:)];
-                end
-                output = {model.u,outputOnOff};
+%                 outputOnOff=[];
+%                 for i=1:numel(obj.minUpDownConstraintsTemp)
+%                     [~, index, ~, ~, ~, ~, ~] = obj.minUpDownConstraintsTemp{i}{:};
+%                     outputOnOff=[outputOnOff; model.onoff(i,:)];
+%                 end
+                output = {model.u,model.onoff};
             else
                 output = {model.u};
             end
