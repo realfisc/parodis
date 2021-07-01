@@ -259,6 +259,13 @@ classdef SymbolicController < Controller
                     
                     if size(obj.minUpDownConstraintsTemp,1) > 0
                         obj.oldOnOff = [obj.oldOnOff(:,2:end) [variables{2}(:,1)]];
+                        %fix for output of binary viariable
+                       if obj.oldOnOff(obj.oldOnOff>1)
+                            obj.oldOnOff(obj.oldOnOff>1)=1;
+                       end
+                       if obj.oldOnOff(obj.oldOnOff<0)
+                           "test"
+                       end
                     end
                     
                 end
