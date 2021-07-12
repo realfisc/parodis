@@ -68,8 +68,8 @@ classdef Controller < handle
         % default weights assumed for cost functions
         
         %FOR UNIT COMMITMENT
-        oldOnOff = [];
-        prevOnOff = [];
+        oldOnOff = [];% history during the simulation
+        prevOnOff = [];% history before the start of simulation
     end
     
     properties (Access = protected)
@@ -213,6 +213,8 @@ classdef Controller < handle
                     obj.constraints = [obj.constraints; extraConstraints];
                 end
             end
+            %build minupdown contraints so they are added implicitly in the
+            %explicit controller
             if isequal(obj.type, 'explicit')
                 obj.buildminUpDownConstraints(model, agent.config.T_s);
             end
@@ -307,6 +309,7 @@ classdef Controller < handle
             end
             %FOR UNIT COMMITMENT
             if size(obj.minUpDownConstraintsTemp) > 0
+                    % Set history in the first run
                     if isempty(obj.oldOnOff)
                         obj.oldOnOff = obj.prevOnOff;
                     end

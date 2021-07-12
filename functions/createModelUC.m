@@ -14,7 +14,7 @@ function model = createModelUC(model_fun, T_s, numScenarios, implicitPrediction,
     if nargin < 5
         controller = [];
     end
-    
+    %get number of min up/down contraints 
     numonoff=size(controller.minUpDownConstraintsTemp,2);
     
     % get parameters for presetting sdpvars
@@ -23,7 +23,7 @@ function model = createModelUC(model_fun, T_s, numScenarios, implicitPrediction,
     % preset sdpvars for all expressions
     model.x0 = sdpvar(n_x, 1);
     model.u = sdpvar(n_u, length(T_s));
-    model.onoff=binvar(numonoff,length(T_s),'full');
+    model.onoff=binvar(numonoff,length(T_s),'full');%for UC 
     model.n_x = n_x;
     model.n_u = n_u;
     model.n_d = n_d;

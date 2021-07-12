@@ -1,6 +1,7 @@
 classdef ExplicitController < Controller
     properties
-        historyOnOff
+        %FOR UNIT COMMITMENT
+        historyOnOff%symbolic variavle for history of unit
         
         indexOnOff
     end
@@ -80,8 +81,15 @@ classdef ExplicitController < Controller
             agent.log("solving using optimize()");
             result = optimize(optimizeConstraints, optimizeCost, obj.yalmipOptions);
             uPred = value(agent.model.u);
+            %shift history
             if size(obj.minUpDownConstraintsTemp,1) > 0
                 obj.oldOnOff = [obj.oldOnOff(:,2:end) value(agent.model.onoff(:,1))];
+                        %fix for output of binary viariable where the ouput
+                        %of the solver is not exactly 1, causes
+                        %infeasibility sometimes
+                       if obj.oldOnOff(obj.oldOnOff>1)
+                            obj.oldOnOff(obj.oldOnOff>1)=1;
+                       end
             end
             slackValues = struct;
             slackVariableNames = fieldnames(obj.slackVariables);
@@ -151,7 +159,6 @@ classdef ExplicitController < Controller
             % build constraints with actual values instead of parameters
             boxConstraints = obj.buildBoxConstraints(paramValues, model);
             deltaConstraints = obj.buildDeltaConstraints(paramValues, model, agent.config.T_s);
-            %minUpDownConstraints=obj.buildminUpDownConstraints(model, agent.config.T_s);
             
             slackConstraints = [];
             
@@ -442,11 +449,17 @@ classdef ExplicitController < Controller
     end
     methods (Access = public)
         function constraints= buildminUpDownConstraints(obj, model, Ts)
+            % buildminUpDownConstraints  Adds min up down constraints using
+            %                            addConstraint during compile. Also
+            %                            ads need boy constraint.
+                                 
+            % build constraints from prenoted minUpDown constraints
             up=[];
             down=[];
             constraints = [];
             for i=1:numel(obj.minUpDownConstraintsTemp)
                 [~, ~, minUp, minDown, ~, ~, ~] = obj.minUpDownConstraintsTemp{i}{:};
+                %get number of steps from minutes
                 scaleUp=ceil(minUp/Ts(1));
                 scaleDown=ceil(minDown/Ts(1));
                 up=[up,scaleUp];
@@ -455,12 +468,13 @@ classdef ExplicitController < Controller
             for i=1:numel(obj.minUpDownConstraintsTemp)
                 [variable, index, minUp, minDown, lb, ub, history] = obj.minUpDownConstraintsTemp{i}{:};
                 tag = char( sprintf("Box Contraint min Up Down Time for u(%i)",index) );
-%                 boxcon=(model.onoff(i,:).*lb <= model.u(index,:) <= model.onoff(i,:).*ub):tag;
-%                 constraints = [constraints;boxcon];
+                %logical connection between input and binary variable
                 obj.addConstraint( @(model, parameters, slacks)(model.onoff(i,:).*lb <= model.u(index,:) <= model.onoff(i,:).*ub) );
-                
+                %choose the largest value as history
                 n=max([up,down]);
-                             
+                % if no or not enough values for history are present, fill
+                % historvector with zeros, assumming the unit was turend
+                % off before             
                 if size(history,2)<n
                     diff=n-size(history,2);
                     history=[zeros([1 diff]), history];
@@ -468,34 +482,37 @@ classdef ExplicitController < Controller
                 obj.prevOnOff=[obj.prevOnOff; history];
                 obj.historyOnOff{i,1} = sdpvar(1,n,'full');
                 obj.indexOnOff=[obj.indexOnOff+index];
+                %expand Ts to have enough values for history
                 Ts=[repmat(Ts(1), 1, size(obj.historyOnOff{i},2)),Ts];
                 if minUp >0
+                    %vector of past and future steps for on constraints
                     x=[obj.historyOnOff{i} model.onoff(i,:)];
                     horizon = size(x,2);
                     for k = 2:horizon 
                         minUpStep=ceil(minUp/Ts(k));
+                        %calculate steps from up duration
                         indicator = x(k)-x(k-1);
+                        %affected steps
                         range = k:min(horizon,k+minUpStep-1);
                         affected = x(range);
                         tag = char( sprintf("Minimum uptime u_%i(%i)", index,k-n) );
-%                         conup=(affected >= indicator):tag;
-%                         constraints = [constraints;conup];   
                         obj.addConstraint( @(model, parameters, slacks)( affected >= indicator) );
                         
                     end
                     
                 end
                 if minDown >0
+                    %vector of past and future steps for off constraints
                     x=1-[obj.historyOnOff{i} model.onoff(i,:)];
                     horizon = size(x,2);
                     for k = 2:horizon 
+                        %calculate steps from down duration
                         minDownStep=ceil(minDown/Ts(k));
+                        %off inidctaor =1 when turned off in step k
                         indicator = x(k)-x(k-1);
                         range = k:min(horizon,k+minDownStep-1);
                         affected = x(range);
                         tag = char( sprintf("Minimum downtime u_%i(%i) ", index,k-n) );
-%                         condown=(affected >= indicator):tag;
-%                         constraints = [constraints;condown];
                         obj.addConstraint( @(model, parameters, slacks)( affected >= indicator) );
                     end
                 end

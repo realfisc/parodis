@@ -3,8 +3,8 @@ classdef SymbolicController < Controller
 
         % YALMIP optimizer object
         optimizer
-        
-        historyOnOff
+        %FOR UNIT COMMITMENT
+        historyOnOff% symbolic variavle for history of unit
         
         indexOnOff
         
@@ -115,26 +115,16 @@ classdef SymbolicController < Controller
             end
             %FOR UNIT COMMITMENT
             if size(obj.minUpDownConstraintsTemp) > 0
-               % tempHistory=[];
                 for i=1:numel(obj.minUpDownConstraintsTemp)
-                   % tempHistory=[tempHistory; obj.historyOnOff{i,1}];
                     optimizerSymbols{end+1} = obj.historyOnOff{i,1};
-                 end
-                    %display(obj.historyOnOff{1:2,1})
-                    %optimizerSymbols{end+1} = tempHistory;
-               
+                end       
             end
             
 
             % define what optimizer should output
             %FOR UNIT COMMITMENT
+            %If UC contraints present, change output of optimizer
             if size(obj.minUpDownConstraintsTemp) > 0
-                %outputOnOff=cell(size(obj.minUpDownConstraintsTemp));
-%                 outputOnOff=[];
-%                 for i=1:numel(obj.minUpDownConstraintsTemp)
-%                     [~, index, ~, ~, ~, ~, ~] = obj.minUpDownConstraintsTemp{i}{:};
-%                     outputOnOff=[outputOnOff; model.onoff(i,:)];
-%                 end
                 output = {model.u,model.onoff};
             else
                 output = {model.u};
@@ -148,10 +138,8 @@ classdef SymbolicController < Controller
             end
             
             obj.optimizer = optimizer(obj.constraints, obj.costExpression, yalmipOptions, optimizerSymbols, output);
-            %obj.optimizer = optimizer(obj.constraints, [], yalmipOptions, optimizerSymbols, output);
             
-            
-            
+              
         end
         
         function [uPred, slackValues, code] = getInput(obj, x0, agent, additionalConstraints, additionalExpression)
@@ -223,9 +211,15 @@ classdef SymbolicController < Controller
                 result = optimize(optimizeConstraints, optimizeCost, obj.yalmipOptions);
                 uPred = value(agent.model.u);
                 %FOR UNIT COMMITMENT
-                %disp(value(agent.model.u))
+                %shift history of unit
                 if size(obj.minUpDownConstraintsTemp,1) > 0
+                        %fix for output of binary viariable where the ouput
+                        %of the solver is not exactly 1, causes
+                        %infeasibility sometimes
                         obj.oldOnOff = [obj.oldOnOff(:,2:end) value(agent.model.onoff(:,1))];
+                       if obj.oldOnOff(obj.oldOnOff>1)
+                            obj.oldOnOff(obj.oldOnOff>1)=1;
+                       end
                 end
              
                 slackValues = struct;
@@ -257,15 +251,14 @@ classdef SymbolicController < Controller
                     % skip solver call, retrieve variables from cell
                     [variables, code, ~, ~, ~, diagnostics] = solver([]);
                     %FOR UNIT COMMITMENT
-                    
+                    %shift history
                     if size(obj.minUpDownConstraintsTemp,1) > 0
                         obj.oldOnOff = [obj.oldOnOff(:,2:end) [variables{2}(:,1)]];
-                        %fix for output of binary viariable
+                        %fix for output of binary viariable where the ouput
+                        %of the solver is not exactly 1, causes
+                        %infeasibility sometimes
                        if obj.oldOnOff(obj.oldOnOff>1)
                             obj.oldOnOff(obj.oldOnOff>1)=1;
-                       end
-                       if obj.oldOnOff(obj.oldOnOff<0)
-                           "test"
                        end
                     end
                     
@@ -538,10 +531,16 @@ classdef SymbolicController < Controller
             end
         end
         function buildminUpDownConstraints(obj, model, Ts)
+            % buildminUpDownConstraints  Adds min up down constraints using
+            %                            addConstraint during compile. Also
+            %                            ads need boy constraint.
+                                 
+            % build constraints from prenoted minUpDown constraints
             up=[];
             down=[];
             for i=1:numel(obj.minUpDownConstraintsTemp)
                 [~, ~, minUp, minDown, ~, ~, ~] = obj.minUpDownConstraintsTemp{i}{:};
+                %get number of steps from minutes
                 scaleUp=ceil(minUp/Ts(1));
                 scaleDown=ceil(minDown/Ts(1));
                 up=[up,scaleUp];
@@ -550,10 +549,13 @@ classdef SymbolicController < Controller
             for i=1:numel(obj.minUpDownConstraintsTemp)
                 [variable, index, minUp, minDown, lb, ub, history] = obj.minUpDownConstraintsTemp{i}{:};
                 tag = char( sprintf("Box Contraint min Up Down Time for u(%i)",index) );
+                %logical connection between input and binary variable
                 obj.addConstraint((model.onoff(i,:).*lb <= model.u(index,:) <= model.onoff(i,:).*ub):tag);
+                %choose the largest value as history
                 n=max([up,down]);
-                
-                
+                % if no or not enough values for history are present, fill
+                % historvector with zeros, assumming the unit was turend
+                % off before
                 if size(history,2)<n
                     diff=n-size(history,2);
                     history=[zeros([1 diff]), history];
@@ -561,13 +563,18 @@ classdef SymbolicController < Controller
                 obj.prevOnOff=[obj.prevOnOff; history];
                 obj.historyOnOff{i,1} = sdpvar(1,n,'full');
                 obj.indexOnOff=[obj.indexOnOff+index];
+                %expand Ts to have enough values for history
                 Ts=[repmat(Ts(1), 1, size(obj.historyOnOff{i},2)),Ts];
                 if minUp >0
+                    %vector of past and future indicators for on constraints
                     x=[obj.historyOnOff{i} model.onoff(i,:)];
                     horizon = size(x,2);
                     for k = 2:horizon 
+                        %calculate steps from up duration
                         minUpStep=ceil(minUp/Ts(k));
+                        %on inidctaor =1 when turned on in step k
                         indicator = x(k)-x(k-1);
+                        %affected steps
                         range = k:min(horizon,k+minUpStep-1);
                         affected = x(range);
                         tag = char( sprintf("Minimum uptime u_%i(%i)", index,k-n) );
@@ -576,10 +583,13 @@ classdef SymbolicController < Controller
                     end
                 end
                 if minDown >0
+                    %vector of past and future indicators for off constraints
                     x=1-[obj.historyOnOff{i} model.onoff(i,:)];
                     horizon = size(x,2);
                     for k = 2:horizon 
+                        %calculate steps from down duration
                         minDownStep=ceil(minDown/Ts(k));
+                        %off inidctaor =1 when turned off in step k
                         indicator = x(k)-x(k-1);
                         range = k:min(horizon,k+minDownStep-1);
                         affected = x(range);
