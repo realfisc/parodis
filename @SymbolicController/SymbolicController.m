@@ -533,7 +533,7 @@ classdef SymbolicController < Controller
         function buildminUpDownConstraints(obj, model, Ts)
             % buildminUpDownConstraints  Adds min up down constraints using
             %                            addConstraint during compile. Also
-            %                            ads need boy constraint.
+            %                            adds need box constraint.
                                  
             % build constraints from prenoted minUpDown constraints
             up=[];
@@ -550,29 +550,32 @@ classdef SymbolicController < Controller
                 [variable, index, minUp, minDown, lb, ub, history] = obj.minUpDownConstraintsTemp{i}{:};
                 tag = char( sprintf("Box Contraint min Up Down Time for u(%i)",index) );
                 %logical connection between input and binary variable
+                %value of input lies between lb and up, lb must be grater 0
+                %if binary variable is zero, input is forced to be zero
                 obj.addConstraint((model.onoff(i,:).*lb <= model.u(index,:) <= model.onoff(i,:).*ub):tag);
                 %choose the largest value as history
                 n=max([up,down]);
                 % if no or not enough values for history are present, fill
-                % historvector with zeros, assumming the unit was turend
+                % history vector with zeroes, assumming the unit was turned
                 % off before
                 if size(history,2)<n
                     diff=n-size(history,2);
                     history=[zeros([1 diff]), history];
                 end
                 obj.prevOnOff=[obj.prevOnOff; history];
+                %create variables for history
                 obj.historyOnOff{i,1} = sdpvar(1,n,'full');
                 obj.indexOnOff=[obj.indexOnOff+index];
                 %expand Ts to have enough values for history
                 Ts=[repmat(Ts(1), 1, size(obj.historyOnOff{i},2)),Ts];
                 if minUp >0
-                    %vector of past and future indicators for on constraints
+                    %vector of past and future indicators for constraints
                     x=[obj.historyOnOff{i} model.onoff(i,:)];
                     horizon = size(x,2);
                     for k = 2:horizon 
                         %calculate steps from up duration
                         minUpStep=ceil(minUp/Ts(k));
-                        %on inidctaor =1 when turned on in step k
+                        %on indicator =1 when turned on in step k
                         indicator = x(k)-x(k-1);
                         %affected steps
                         range = k:min(horizon,k+minUpStep-1);
